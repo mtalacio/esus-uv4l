@@ -15,19 +15,26 @@ type Feedback = {
 
 function App() {
 	const [session, setSession] = useState<WebrtcSession | undefined>(undefined);
-	const [url, setUrl] = useState("ws://192.168.2.113:8080/stream/webrtc");
+	const [url, setUrl] = useState("ws://192.168.2.112:8080/stream/webrtc");
+	const [dataChannel, setDataChannel] = useState<RTCDataChannel | undefined>(undefined);
+
 	const [mainCamera, setMainCamera] = useState<boolean>(true);
+
 	const [loadingArray, setLoadingArray] = useState<Array<boolean>>([false, false]);
+
+	const [commandRoutine, setCommandRoutine] = useState<number>(-1);
 
 	const [keys, setKeys] = useState<Array<string>>([]);
 
 	useEffect(() => {
 		window.addEventListener("keydown", onKeyDown, true);
 		window.addEventListener("keyup", onKeyUp, true);
-
+		
 		return(() => {
 			window.removeEventListener("keydown", onKeyDown, true);
 			window.removeEventListener("keyup", onKeyUp, true);
+			if(commandRoutine !== -1)
+				clearInterval(commandRoutine);
 		})
 	}, []);
 
@@ -39,8 +46,29 @@ function App() {
 		if(event.repeat)
 			return;
 		
-		const key = event.key;
-		
+		let key = event.key;
+
+		if(key.length === 1) {
+			key = key.toLowerCase();
+
+			switch(key) {
+				case "w":
+					key = "ArrowUp";
+					break; 
+				case "s":
+					key = "ArrowDown";
+					break; 
+				case "d":
+					key = "ArrowRight";
+					break; 
+				case "a":
+					key = "ArrowLeft";
+					break; 
+				default:
+					return;
+			}
+		}
+
 		if(!(key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight"))
 			return;
 		
@@ -55,7 +83,29 @@ function App() {
 	}
 
 	const onKeyUp = (event: KeyboardEvent) => {
-		const key = event.key;
+		let key = event.key;
+
+		if(key.length === 1) {
+			key = key.toLowerCase();
+
+			switch(key) {
+				case "w":
+					key = "ArrowUp";
+					break; 
+				case "s":
+					key = "ArrowDown";
+					break; 
+				case "d":
+					key = "ArrowRight";
+					break; 
+				case "a":
+					key = "ArrowLeft";
+					break; 
+				default:
+					return;
+			}
+		}
+
 		if(!(key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight"))
 			return;
 		
@@ -97,10 +147,25 @@ function App() {
 		await streamRef.current.play();
 	}
 
+	const onDataChannel = (channel: RTCDataChannel) => {
+		console.log("Got datachannel");
+		setDataChannel(channel);
+
+		setCommandRoutine(setInterval(() => {
+			setKeys(pKeys => {
+				if(pKeys.length > 0) {
+					channel.send(pKeys[0]);
+				}
+
+				return pKeys;
+			})
+		}, 200));
+	}
+
 	const onCall = async () => {
 		let newSession = new WebrtcSession(url, options);
 		newSession.setOnStreamCallback(onStream);
-
+		newSession.setOnDataChannelCallback(onDataChannel);
 		setLoading(true, 0);
 
 		try {
@@ -127,6 +192,9 @@ function App() {
 		if(session) {
 			await session.hangup();
 			setSession(undefined);
+			setDataChannel(undefined);
+			clearInterval(commandRoutine);
+			setCommandRoutine(-1);
 		}
 	}
 
@@ -158,6 +226,7 @@ function App() {
 							<span>Hangup</span>
 					</LoadingButton>
 				</Box>
+				<img src="http://192.168.2.112:8090/stream/video.mjpeg" alt="Video"/>
 				<video ref={streamRef} style={{backgroundColor: "gray", width: "800px", height: "480px"}}/>
 				<Box sx={{display: "flex", alignSelf: "flex-end", marginTop: "5px", marginRight: "5px"}}>
 					<Typography sx={{marginRight: "5px"}}>{"Status:"}</Typography>
