@@ -1,6 +1,7 @@
 import { CallEnd, East, North, Phone, South, West } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
 import { Alert, AlertColor, AlertTitle, Box, Button, Snackbar, Typography } from '@mui/material'
+import { Unsubscribe } from 'firebase/firestore';
 import { SyntheticEvent, useEffect, useRef, useState } from 'react'
 import WebrtcSession, { WebrtcOptions } from './webrtc/connection';
 
@@ -13,18 +14,24 @@ type Feedback = {
 	severity: AlertColor
 }
 
+const rearCameraUrl = "http://192.168.2.112:8090/stream/video.mjpeg";
+
 function App() {
 	const [session, setSession] = useState<WebrtcSession | undefined>(undefined);
 	const [url, setUrl] = useState("ws://192.168.2.112:8080/stream/webrtc");
-	const [dataChannel, setDataChannel] = useState<RTCDataChannel | undefined>(undefined);
+	const [rearUrl, setRearUrl] = useState<string>("");
 
-	const [mainCamera, setMainCamera] = useState<boolean>(true);
+	const [mapUnsub, setMapUnsub] = useState<Unsubscribe | undefined>(undefined);
+
+	const [dataChannel, setDataChannel] = useState<RTCDataChannel | undefined>(undefined);
 
 	const [loadingArray, setLoadingArray] = useState<Array<boolean>>([false, false]);
 
-	const [commandRoutine, setCommandRoutine] = useState<number>(-1);
+	const [commandRoutine, setCommandRoutine] = useState<NodeJS.Timer>();
 
 	const [keys, setKeys] = useState<Array<string>>([]);
+
+	const streamRef = useRef<HTMLVideoElement>(null);
 
 	useEffect(() => {
 		window.addEventListener("keydown", onKeyDown, true);
@@ -33,7 +40,7 @@ function App() {
 		return(() => {
 			window.removeEventListener("keydown", onKeyDown, true);
 			window.removeEventListener("keyup", onKeyUp, true);
-			if(commandRoutine !== -1)
+			if(commandRoutine !== undefined)
 				clearInterval(commandRoutine);
 		})
 	}, []);
@@ -134,8 +141,6 @@ function App() {
 		useH264: true
 	})
 
-	const streamRef = useRef<HTMLVideoElement>(null);
-
 	const onStream = async (stream: MediaProvider) => {
 		if(!streamRef)
 			return;
@@ -145,6 +150,9 @@ function App() {
 
 		streamRef.current.srcObject = stream;
 		await streamRef.current.play();
+		setRearUrl(rearCameraUrl);
+
+		setLoading(false, 0);
 	}
 
 	const onDataChannel = (channel: RTCDataChannel) => {
@@ -177,8 +185,6 @@ function App() {
 				severity: "error",
 				title: 'Error'
 			})
-		} finally {
-			setLoading(false, 0);
 		}
 	}
 
@@ -194,7 +200,13 @@ function App() {
 			setSession(undefined);
 			setDataChannel(undefined);
 			clearInterval(commandRoutine);
-			setCommandRoutine(-1);
+			setCommandRoutine(undefined);
+
+			if(streamRef.current)
+				streamRef.current.srcObject = null;
+
+			setRearUrl("");
+
 		}
 	}
 
@@ -226,13 +238,18 @@ function App() {
 							<span>Hangup</span>
 					</LoadingButton>
 				</Box>
-				<img src="http://192.168.2.112:8090/stream/video.mjpeg" alt="Video"/>
-				<video ref={streamRef} style={{backgroundColor: "gray", width: "800px", height: "480px"}}/>
+				<Box sx={{display: "flex"}}>
+					<Box sx={{backgroundColor: "gray", width: "640px", height: "480px"}}>
+						<img src={rearUrl} alt="Rear Video"/>
+					</Box>
+					<video ref={streamRef} style={{backgroundColor: "gray", width: "800px", height: "480px"}}/>
+				</Box>
 				<Box sx={{display: "flex", alignSelf: "flex-end", marginTop: "5px", marginRight: "5px"}}>
 					<Typography sx={{marginRight: "5px"}}>{"Status:"}</Typography>
 					<Typography sx={{color: session ? "green" : "red"}}>{session ? "Connected" : "Disconnected"}</Typography>
 				</Box>
-				<Box sx={{display: "flex", flexDirection: "column", alignItems: "center", marginTop: "20px"}}>
+				<Box sx={{display: "flex", width: "100%", marginTop: "20px"}}>
+					<Box sx={{display: "flex", flexDirection: "column", alignItems: "center", width: "100%"}}>
 						<North fontSize="large" sx={{color: keys.includes("ArrowUp") ? "black" : "gray"}}/>
 						<Box>
 							<West fontSize="large" sx={{color: keys.includes("ArrowLeft") ? "black" : "gray"}}/>
@@ -240,6 +257,10 @@ function App() {
 							<East fontSize="large" sx={{color: keys.includes("ArrowRight") ? "black" : "gray"}}/>
 						</Box>
 					</Box>
+					<Box sx={{width: "100%"}}>
+						
+					</Box>
+				</Box>
 				<Snackbar open={feedbackInfo.open} autoHideDuration={6000} anchorOrigin={{vertical: "bottom", horizontal: "center"}}
 					onClose={handleFeedbackClose} sx={{minWidth: "30%"}}>
 					<Alert severity={feedbackInfo.severity} sx={{width: "100%"}} onClose={handleFeedbackClose}>
