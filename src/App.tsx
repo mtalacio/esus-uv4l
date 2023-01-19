@@ -1,8 +1,9 @@
 import { CallEnd, East, North, Phone, South, West } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
 import { Alert, AlertColor, AlertTitle, Box, Button, Snackbar, Typography } from '@mui/material'
-import { Unsubscribe } from 'firebase/firestore';
 import { SyntheticEvent, useEffect, useRef, useState } from 'react'
+import CustomMap from './CustomMap';
+import { attachMapListener, Location } from './firebase';
 import WebrtcSession, { WebrtcOptions } from './webrtc/connection';
 
 type FeedbackTitle = "Error" | "Success" | "Warning";
@@ -14,6 +15,11 @@ type Feedback = {
 	severity: AlertColor
 }
 
+type TrackerParams = {
+	companyId: string,
+	vehicleId: string
+}
+
 const rearCameraUrl = "http://192.168.2.112:8090/stream/video.mjpeg";
 
 function App() {
@@ -21,7 +27,9 @@ function App() {
 	const [url, setUrl] = useState("ws://192.168.2.112:8080/stream/webrtc");
 	const [rearUrl, setRearUrl] = useState<string>("");
 
-	const [mapUnsub, setMapUnsub] = useState<Unsubscribe | undefined>(undefined);
+	const [mapUnsub, setMapUnsub] = useState<() => void>(() => null);
+	const [params, setParams] = useState<TrackerParams | undefined>(undefined);
+	const [currentLocation, setCurrentLocation] = useState<Location>({lat: 0, lng: 0});
 
 	const [dataChannel, setDataChannel] = useState<RTCDataChannel | undefined>(undefined);
 
@@ -37,6 +45,17 @@ function App() {
 		window.addEventListener("keydown", onKeyDown, true);
 		window.addEventListener("keyup", onKeyUp, true);
 		
+		const qParams = new URLSearchParams(window.location.search);
+		const cId = qParams.get("cid");
+		const vId = qParams.get("vid");
+
+		if(cId && vId) {
+			setParams({
+				companyId: cId,
+				vehicleId: vId
+			})
+		}
+			
 		return(() => {
 			window.removeEventListener("keydown", onKeyDown, true);
 			window.removeEventListener("keyup", onKeyUp, true);
@@ -152,7 +171,25 @@ function App() {
 		await streamRef.current.play();
 		setRearUrl(rearCameraUrl);
 
+		if(params) {
+			const unsub = attachMapListener(params?.companyId, params?.vehicleId, onNewLocation);
+			setMapUnsub(prev => {
+				return unsub;
+			});
+		} else {
+			setFeedbackInfo({
+				message: "Invalid URL Parameters",
+				severity: 'error',
+				title: "Error",
+				open: true
+			});
+		}
+
 		setLoading(false, 0);
+	}
+
+	const onNewLocation = (loc: Location) => {
+		setCurrentLocation(loc);
 	}
 
 	const onDataChannel = (channel: RTCDataChannel) => {
@@ -207,6 +244,11 @@ function App() {
 
 			setRearUrl("");
 
+			if(mapUnsub) {
+				console.log("Unsubbing")
+				mapUnsub();
+				setMapUnsub(() => null);
+			}
 		}
 	}
 
@@ -248,7 +290,7 @@ function App() {
 					<Typography sx={{marginRight: "5px"}}>{"Status:"}</Typography>
 					<Typography sx={{color: session ? "green" : "red"}}>{session ? "Connected" : "Disconnected"}</Typography>
 				</Box>
-				<Box sx={{display: "flex", width: "100%", marginTop: "20px"}}>
+				<Box sx={{display: "flex", width: "100%", marginTop: "20px", maxHeight: "600px"}}>
 					<Box sx={{display: "flex", flexDirection: "column", alignItems: "center", width: "100%"}}>
 						<North fontSize="large" sx={{color: keys.includes("ArrowUp") ? "black" : "gray"}}/>
 						<Box>
@@ -258,7 +300,7 @@ function App() {
 						</Box>
 					</Box>
 					<Box sx={{width: "100%"}}>
-						
+						<CustomMap location={currentLocation} sx={{height: "300px"}}/>
 					</Box>
 				</Box>
 				<Snackbar open={feedbackInfo.open} autoHideDuration={6000} anchorOrigin={{vertical: "bottom", horizontal: "center"}}

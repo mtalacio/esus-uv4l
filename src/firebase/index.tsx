@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { collection, doc, getFirestore, limit, onSnapshot, orderBy, query, Unsubscribe } from "firebase/firestore";
+import { collection, getFirestore, limit, onSnapshot, orderBy, query, Unsubscribe } from "firebase/firestore";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAhhe0Rx3j6_YN5wHJsJ84LZ_TPc59wuq0",
@@ -21,6 +21,7 @@ export type Location = {
 }
 
 export const attachMapListener = (companyId: string, vehicleId: string, callback: (loc: Location) => void): Unsubscribe => {
+    console.log(`Adding Listener to ${companyId}::${vehicleId}`)
     const ref = collection(db, `companies/${companyId}/vehicles/${vehicleId}/location`);
 
     const unsub = onSnapshot(query(ref, orderBy("date", "desc"), limit(1)), (doc) => {
@@ -30,8 +31,13 @@ export const attachMapListener = (companyId: string, vehicleId: string, callback
             
             const data = change.doc.data();
 
-            console.log(data);
+            callback({
+                lat: data.gps._lat,
+                lng: data.gps._long
+            })
         })
+    }, error => {
+        console.log(error);
     });
 
     return unsub;

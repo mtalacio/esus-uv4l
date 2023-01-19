@@ -1,10 +1,10 @@
-import { GoogleMap, useJsApiLoader } from "@react-google-maps/api";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import { useCallback, useState } from "react";
 import { Location } from "../firebase";
 
 interface MapProps {
     location: Location,
-    sx: object
+    sx?: object
 }
 
 function CustomMap({location, sx}: MapProps) {
@@ -27,10 +27,11 @@ function CustomMap({location, sx}: MapProps) {
     return isLoaded ? (
         <GoogleMap
             mapContainerStyle={sx}
-            zoom={10}
+            zoom={17}
+            center={location}
             onLoad={onLoad}
             onUnmount={onUnmount}>
-            <></>
+            <Marker position={location}/>
         </GoogleMap>
     ) : <></>
 }
