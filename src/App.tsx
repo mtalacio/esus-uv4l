@@ -72,35 +72,52 @@ function App() {
 		if(event.repeat)
 			return;
 		
+		if(keys.length === 2)
+			return;
+
 		let key = event.key;
 
-		if(key.length === 1) {
-			key = key.toLowerCase();
+		key = key.toLowerCase();
+
+		if(key.length > 1) {
 
 			switch(key) {
-				case "w":
-					key = "ArrowUp";
+				case "arrowup":
+					key = "w";
 					break; 
-				case "s":
-					key = "ArrowDown";
+				case "arrowdown":
+					key = "s";
 					break; 
-				case "d":
-					key = "ArrowRight";
+				case "arrowright":
+					key = "d";
 					break; 
-				case "a":
-					key = "ArrowLeft";
+				case "arrowleft":
+					key = "a";
 					break; 
 				default:
 					return;
 			}
 		}
 
-		if(!(key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight"))
+		if(!(key === "w" || key === "a" || key === "s" || key === "d"))
 			return;
-		
+
 		setKeys(keys => {
+			if(keys.length === 2)
+				return keys;
+
 			if(keys.includes(key))
 				return keys;
+
+			if(key === "w" || key === "s") {
+				if(keys.includes("w") || keys.includes("s"))
+					return keys;
+			}
+
+			if(key === "a" || key === "d") {
+				if(keys.includes("a") || keys.includes("d"))
+					return keys;
+			}
 			
 			const newKeys = [...keys];
 			newKeys.push(key);
@@ -111,30 +128,31 @@ function App() {
 	const onKeyUp = (event: KeyboardEvent) => {
 		let key = event.key;
 
-		if(key.length === 1) {
-			key = key.toLowerCase();
+		key = key.toLowerCase();
+
+		if(key.length > 1) {
 
 			switch(key) {
-				case "w":
-					key = "ArrowUp";
+				case "arrowup":
+					key = "w";
 					break; 
-				case "s":
-					key = "ArrowDown";
+				case "arrowdown":
+					key = "s";
 					break; 
-				case "d":
-					key = "ArrowRight";
+				case "arrowright":
+					key = "d";
 					break; 
-				case "a":
-					key = "ArrowLeft";
+				case "arrowleft":
+					key = "a";
 					break; 
 				default:
 					return;
 			}
 		}
 
-		if(!(key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight"))
+		if(!(key === "w" || key === "a" || key === "s" || key === "d"))
 			return;
-		
+
 		setKeys(keys => {
 			const newKeys = [...keys];
 			const keyIndex = keys.indexOf(key);
@@ -200,6 +218,8 @@ function App() {
 			setKeys(pKeys => {
 				if(pKeys.length > 0) {
 					channel.send(pKeys[0]);
+				} else {
+					channel.send("n");
 				}
 
 				return pKeys;
@@ -247,7 +267,7 @@ function App() {
 			if(mapUnsub) {
 				console.log("Unsubbing")
 				mapUnsub();
-				setMapUnsub(() => null);
+				setMapUnsub(prev => () => {});
 			}
 		}
 	}
@@ -266,6 +286,7 @@ function App() {
 	return (
 		<Box sx={{display: "flex", flexDirection: "column", alignItems: "center"}}>
 			<Box sx={{display: "flex", flexDirection: "column", alignItems: "center"}}>
+				<Typography sx={{marginTop: "15px", fontWeight: 500, color: "red"}}>!! TEST SYSTEM - DO NOT USE IN PRODUCTION !!</Typography>
 				<Box sx={{marginTop: "10px", alignSelf: "flex-end", marginBottom: "10px"}}>
 					<LoadingButton 
 						loading={loadingArray[0]} loadingPosition="end" sx={{marginRight: "10px"}}
@@ -292,11 +313,11 @@ function App() {
 				</Box>
 				<Box sx={{display: "flex", width: "100%", marginTop: "20px", maxHeight: "600px"}}>
 					<Box sx={{display: "flex", flexDirection: "column", alignItems: "center", width: "100%"}}>
-						<North fontSize="large" sx={{color: keys.includes("ArrowUp") ? "black" : "gray"}}/>
+						<North fontSize="large" sx={{color: keys.includes("w") ? "black" : "gray"}}/>
 						<Box>
-							<West fontSize="large" sx={{color: keys.includes("ArrowLeft") ? "black" : "gray"}}/>
-							<South fontSize="large" sx={{color: keys.includes("ArrowDown") ? "black" : "gray"}}/>
-							<East fontSize="large" sx={{color: keys.includes("ArrowRight") ? "black" : "gray"}}/>
+							<West fontSize="large" sx={{color: keys.includes("a") ? "black" : "gray"}}/>
+							<South fontSize="large" sx={{color: keys.includes("s") ? "black" : "gray"}}/>
+							<East fontSize="large" sx={{color: keys.includes("d") ? "black" : "gray"}}/>
 						</Box>
 					</Box>
 					<Box sx={{width: "100%"}}>
