@@ -20,12 +20,10 @@ type TrackerParams = {
 	vehicleId: string
 }
 
-const rearCameraUrl = "http://192.168.2.112:8090/stream/video.mjpeg";
-
 function App() {
 	const [session, setSession] = useState<WebrtcSession | undefined>(undefined);
-	const [url, setUrl] = useState("ws://192.168.2.112:8080/stream/webrtc");
-	const [rearUrl, setRearUrl] = useState<string>("");
+	const [url, setUrl] = useState(`ws://${window.location.host}:8080/stream/webrtc`);
+	const [rearUrl, setRearUrl] = useState<string>(`http://${window.location.host}:8090/stream/video.mjpeg`);
 
 	const [mapUnsub, setMapUnsub] = useState<() => void>(() => null);
 	const [params, setParams] = useState<TrackerParams | undefined>(undefined);
@@ -48,6 +46,9 @@ function App() {
 		const qParams = new URLSearchParams(window.location.search);
 		const cId = qParams.get("cid");
 		const vId = qParams.get("vid");
+
+		console.log(rearUrl);
+		console.log(url);
 
 		if(cId && vId) {
 			setParams({
@@ -187,7 +188,7 @@ function App() {
 
 		streamRef.current.srcObject = stream;
 		await streamRef.current.play();
-		setRearUrl(rearCameraUrl);
+		setRearUrl(rearUrl);
 
 		if(params) {
 			const unsub = attachMapListener(params?.companyId, params?.vehicleId, onNewLocation);
